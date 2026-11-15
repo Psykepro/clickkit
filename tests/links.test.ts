@@ -9,12 +9,15 @@ const MSG = (text: string) => ({
   props: { text, isFirstOfReply: true },
 }) as const
 
+const toasts: string[] = []
+const gone = new Set<string>()
+
 function stubs(on: any, existing: string[], runs: any[] = [], envs: Record<string, string> = {}, failing: string[] = []) {
   on('session.cwd', () => ({ value: '/work' }))
   on('env.get', ($: any, e: any) => ({ value: e.name === 'HOME' ? '/home/u' : envs[e.name] }))
-  on('fs.exists', ($: any, e: any) => ({ value: existing.includes(e.path) }))
+  on('fs.exists', ($: any, e: any) => ({ value: existing.includes(e.path) && !gone.has(e.path) }))
   on('ui.log', () => ({ value: undefined }))
-  on('ui.toast', () => ({ value: undefined }))
+  on('ui.toast', ($: any, e: any) => { toasts.push(String(e.message ?? e.text ?? JSON.stringify(e))); return { value: undefined } })
   on('ui.render', () => ({ type: 'Text', props: {}, children: ['native'] }))
   on('process.run', ($: any, e: any) => {
     runs.push({ argv: [...e.argv], stdin: e.init?.stdin })
@@ -289,4 +292,23 @@ test('two blocks in one message each copy their own text', async ($, on) => {
   const ui = await $.ui.mount(MSG('```\nAAA\n```\nmid\n```\nBBB\n```'))
   for (const k of await copyBtns(ui)) await ui.press({ key: k })
   expect(runs.map((r) => r.stdin)).toEqual(['AAA', 'BBB'])
+})
+
+test('a bold label before a relative path still opens it', async ($, on) => {
+  const runs: any[] = []
+  stubs(on, ['/work/_project/sessions/0040.aeos-master-plan/MASTER-PLAN.md', '/work/.git'], runs)
+  const ui = await $.ui.mount(MSG('Plan ready.\n**File to read:** _project/sessions/0040.aeos-master-plan/MASTER-PLAN.md — first screen is enough.'))
+  const key = (await buttons(ui)).find((k) => k.startsWith('ofl|open|'))
+  expect(key).toBeTruthy()
+  await ui.press({ key })
+  expect(runs).toEqual([{ argv: ['code', '/work', '-g', '/work/_project/sessions/0040.aeos-master-plan/MASTER-PLAN.md'], stdin: undefined }])
+})
+
+test('open toasts when the file is gone by the time of the press', async ($, on) => {
+  toasts.length = 0; gone.clear()
+  stubs(on, ['/abs/a.py'])
+  const ui = await $.ui.mount(MSG('see /abs/a.py'))
+  gone.add('/abs/a.py')
+  await ui.press({ key: (await buttons(ui)).find((k) => k.startsWith('ofl|open|'))! })
+  expect(toasts.some((t) => t.includes('no longer exists'))).toBe(true)
 })

@@ -51,11 +51,15 @@ const isCommand = (span) => span.trim().split(/\s+/).length >= 2
 let lastPress = { key: '', at: 0 }
 
 async function openFile($, path, line) {
-  const editor = (await $.env.get('OPEN_FILE_EDITOR')) || 'code'
-  const root = await projectRoot($, path)
-  const argv = [editor, root, '-g', line ? path + ':' + line : path]
-  const r = await $.process.run(argv)
-  if (r.exitCode !== 0) $.ui.toast('open failed: ' + (r.stderr || editor + ' exit ' + r.exitCode))
+  try {
+    if (!(await $.fs.exists(path))) return $.ui.toast('open failed: ' + path + ' no longer exists')
+    const editor = (await $.env.get('OPEN_FILE_EDITOR')) || 'code'
+    const root = await projectRoot($, path)
+    const r = await $.process.run([editor, root, '-g', line ? path + ':' + line : path])
+    if (r.exitCode !== 0) $.ui.toast('open failed: ' + (r.stderr || editor + ' exit ' + r.exitCode))
+  } catch (err) {
+    $.ui.toast('open failed: ' + (err && err.message ? err.message : err))
+  }
 }
 
 // Clipboard tools tried in order: macOS, Wayland, X11, Windows/WSL
