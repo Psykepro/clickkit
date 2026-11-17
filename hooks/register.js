@@ -13,10 +13,10 @@ function normalize(path) {
   return '/' + out.join('/')
 }
 
-// Nearest ancestor holding a root marker (OPEN_FILE_ROOT_MARKERS, comma list in priority order, default .git), else the file's folder
+// Nearest ancestor holding a root marker (CLICKKIT_ROOT_MARKERS, comma list in priority order, default .git), else the file's folder
 async function projectRoot($, file) {
   const start = file.slice(0, file.lastIndexOf('/')) || '/'
-  const markers = String((await $.env.get('OPEN_FILE_ROOT_MARKERS')) || '.git').split(',').map((m) => m.trim()).filter(Boolean)
+  const markers = String((await $.env.get('CLICKKIT_ROOT_MARKERS')) || '.git').split(',').map((m) => m.trim()).filter(Boolean)
   for (const marker of markers) {
     let dir = start
     for (let i = 0; i < 40; i += 1) {
@@ -53,7 +53,7 @@ let lastPress = { key: '', at: 0 }
 async function openFile($, path, line) {
   try {
     if (!(await $.fs.exists(path))) return $.ui.toast('open failed: ' + path + ' no longer exists')
-    const editor = (await $.env.get('OPEN_FILE_EDITOR')) || 'code'
+    const editor = (await $.env.get('CLICKKIT_EDITOR')) || 'code'
     const root = await projectRoot($, path)
     const r = await $.process.run([editor, root, '-g', line ? path + ':' + line : path])
     if (r.exitCode !== 0) $.ui.toast('open failed: ' + (r.stderr || editor + ' exit ' + r.exitCode))
@@ -66,7 +66,7 @@ async function openFile($, path, line) {
 const COPY_TOOLS = [['pbcopy'], ['wl-copy'], ['xclip', '-selection', 'clipboard'], ['clip.exe']]
 
 async function copyText($, text, label) {
-  const custom = (await $.env.get('OPEN_FILE_COPY_CMD')) || ''
+  const custom = (await $.env.get('CLICKKIT_COPY_CMD')) || ''
   const tools = custom.trim() ? [custom.trim().split(/\s+/)] : COPY_TOOLS
   let last = 'no clipboard tool found'
   for (const argv of tools) {
@@ -81,7 +81,7 @@ async function copyText($, text, label) {
   $.ui.toast('copy failed: ' + last)
 }
 
-// Button keys carry the action: ofl|open|<abs>|<line>|<messageId>, ofl|copy|<abs>||<messageId>, ofl|cmd|<id>
+// Button keys carry the action: ck|open|<abs>|<line>|<messageId>, ck|copy|<abs>||<messageId>, ck|cmd|<id>
 async function press($, key) {
   const [, action, path, line] = key.split('|')
   const now = Date.now()
@@ -140,8 +140,8 @@ const noop = () => {}
 const LINK_COLOR = 'permission'
 
 export function register(on) {
-  on('ui.press', { plugin: 'open-file-links' }, async ($, e, next) => {
-    if (typeof e.element === 'string' && e.element.startsWith('ofl|')) await press($, e.element)
+  on('ui.press', { plugin: 'clickkit' }, async ($, e, next) => {
+    if (typeof e.element === 'string' && e.element.startsWith('ck|')) await press($, e.element)
     return next(e)
   })
 
@@ -231,7 +231,7 @@ export function register(on) {
       if (!Array.isArray(hits)) {
         md.push(lines[i])
         flush()
-        blocks.push(Button({ key: 'ofl|cmd|' + hits.fence, plain: true, onPress: noop,
+        blocks.push(Button({ key: 'ck|cmd|' + hits.fence, plain: true, onPress: noop,
           children: [Text({ color: LINK_COLOR, children: ' ⧉ copy ' })] }))
         continue
       }
@@ -243,17 +243,17 @@ export function register(on) {
           for (const t of lines[i].slice(at, h.start).split(/(?<=\s)/).filter(Boolean)) items.push(word(t))
           for (const t of h.text.split(/(?<=\s)/).filter(Boolean)) items.push(Text({ color: LINK_COLOR, children: t }))
           items.push(word(' '))
-          items.push(Button({ key: 'ofl|cmd|' + h.cmd, plain: true, onPress: noop,
+          items.push(Button({ key: 'ck|cmd|' + h.cmd, plain: true, onPress: noop,
             children: [Text({ color: LINK_COLOR, children: ' ⧉ ' })] }))
           at = h.end
           continue
         }
         for (const t of lines[i].slice(at, h.start).split(/(?<=\s)/).filter(Boolean)) items.push(word(t))
         n += 1
-        items.push(Button({ key: 'ofl|open|' + h.abs + '|' + h.line + '|' + e.requestId + '|' + n, plain: true, onPress: noop,
+        items.push(Button({ key: 'ck|open|' + h.abs + '|' + h.line + '|' + e.requestId + '|' + n, plain: true, onPress: noop,
           children: [Text({ color: LINK_COLOR, children: '↗ ' + h.label })] }))
         items.push(word(' '))
-        items.push(Button({ key: 'ofl|copy|' + h.abs + '||' + e.requestId + '|' + n, plain: true, onPress: noop,
+        items.push(Button({ key: 'ck|copy|' + h.abs + '||' + e.requestId + '|' + n, plain: true, onPress: noop,
           children: [Text({ color: LINK_COLOR, children: ' ⧉ ' })] }))
         at = h.end
       }

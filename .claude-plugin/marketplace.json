@@ -1,13 +1,13 @@
 {
-  "name": "open-file-links",
+  "name": "clickkit",
   "owner": {
     "name": "Nikolay Nedkov"
   },
   "plugins": [
     {
-      "name": "open-file-links",
+      "name": "clickkit",
       "source": "./",
-      "description": "Clickable open and copy buttons for file paths, and one-click copy for commands, in Claude Code's terminal"
+      "description": "Click file paths to open them in your editor, and copy any path, command or multi-line text with one button, in the Claude Code terminal"
     }
   ],
   "description": "Terminal quality-of-life plugins for Claude Code"

@@ -1,7 +1,7 @@
 {
-  "name": "open-file-links",
-  "version": "0.4.2",
-  "description": "Clickable open and copy buttons for file paths, and one-click copy for commands, in Claude Code's terminal. Part of the upcoming Agentic Engineering Operating System (AEOS)",
+  "name": "clickkit",
+  "version": "0.5.0",
+  "description": "Click file paths to open them in your editor, and copy any path, command or multi-line text with one button, in the Claude Code terminal",
   "author": {
     "name": "Nikolay Nedkov"
   },
@@ -11,9 +11,10 @@
     "paths",
     "editor",
     "clipboard",
-    "terminal",
     "copy",
-    "commands"
+    "terminal",
+    "click",
+    "standalone"
   ],
   "homepage": "https://github.com/Psykepro/open-file-links",
   "repository": "https://github.com/Psykepro/open-file-links"

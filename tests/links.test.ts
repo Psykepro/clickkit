@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 const MSG = (text: string) => ({
-  plugin: 'open-file-links',
+  plugin: 'clickkit',
   component: 'AssistantMessage',
   requestId: 'm1',
   surface: 'terminal',
@@ -29,7 +29,7 @@ function stubs(on: any, existing: string[], runs: any[] = [], envs: Record<strin
 const keyOf = (b: any) => b.props.key as string
 const buttons = async (ui: any) => (await ui.findAll({ type: 'Button' })).map(keyOf) as string[]
 const pressKey = async (ui: any, action: string, path: string) => {
-  const key = (await buttons(ui)).find((k) => k.startsWith(`ofl|${action}|${path}|`))
+  const key = (await buttons(ui)).find((k) => k.startsWith(`ck|${action}|${path}|`))
   if (!key) throw new Error(`no ${action} button for ${path}`)
   await ui.press({ key })
 }
@@ -38,10 +38,10 @@ test('existing absolute, relative and ~ paths become open and copy buttons in th
   stubs(on, ['/abs/a.py', '/work/src/b.ts', '/home/u/c.md'])
   const ui = await $.ui.mount(MSG('See `/abs/a.py:12`, src/b.ts and ~/c.md now. Missing /nope/x.py stays.'))
   const keys = await buttons(ui)
-  expect(keys.some((k) => k.startsWith('ofl|open|/abs/a.py|12|m1|'))).toBe(true)
-  expect(keys.some((k) => k.startsWith('ofl|copy|/abs/a.py||m1|'))).toBe(true)
-  expect(keys.some((k) => k.startsWith('ofl|open|/work/src/b.ts||m1|'))).toBe(true)
-  expect(keys.some((k) => k.startsWith('ofl|open|/home/u/c.md||m1|'))).toBe(true)
+  expect(keys.some((k) => k.startsWith('ck|open|/abs/a.py|12|m1|'))).toBe(true)
+  expect(keys.some((k) => k.startsWith('ck|copy|/abs/a.py||m1|'))).toBe(true)
+  expect(keys.some((k) => k.startsWith('ck|open|/work/src/b.ts||m1|'))).toBe(true)
+  expect(keys.some((k) => k.startsWith('ck|open|/home/u/c.md||m1|'))).toBe(true)
   expect(keys.some((k) => k.includes('/nope/'))).toBe(false)
   expect(await ui.find({ type: 'Text', text: '↗ /abs/a.py:12' })).toBeDefined()
 })
@@ -57,7 +57,7 @@ test('table rows get no buttons and fenced code gets no open buttons', async ($,
   stubs(on, ['/abs/a.py'])
   const ui = await $.ui.mount(MSG('```\n/abs/a.py\n```\n| x | /abs/a.py |'))
   const keys = await buttons(ui)
-  expect(keys.filter((k) => k.startsWith('ofl|open|') || k.startsWith('ofl|copy|')).length).toBe(0)
+  expect(keys.filter((k) => k.startsWith('ck|open|') || k.startsWith('ck|copy|')).length).toBe(0)
   expect(keys.length).toBe(1)
 })
 
@@ -73,9 +73,9 @@ test('the same path twice gets distinct buttons', async ($, on) => {
   expect(new Set(await buttons(ui)).size).toBe(4)
 })
 
-test('open runs the editor from the root named by OPEN_FILE_ROOT_MARKERS with the line', async ($, on) => {
+test('open runs the editor from the root named by CLICKKIT_ROOT_MARKERS with the line', async ($, on) => {
   const runs: any[] = []
-  stubs(on, ['/proj/src/a.py', '/proj/pnpm-workspace.yaml', '/proj/src/.git'], runs, { OPEN_FILE_ROOT_MARKERS: 'pnpm-workspace.yaml,.git' })
+  stubs(on, ['/proj/src/a.py', '/proj/pnpm-workspace.yaml', '/proj/src/.git'], runs, { CLICKKIT_ROOT_MARKERS: 'pnpm-workspace.yaml,.git' })
   const ui = await $.ui.mount(MSG('see /proj/src/a.py:7'))
   await pressKey(ui, 'open', '/proj/src/a.py')
   expect(runs.map((r) => r.argv)).toEqual([['code', '/proj', '-g', '/proj/src/a.py:7']])
@@ -112,8 +112,8 @@ test('relative paths with .. are normalized', async ($, on) => {
   stubs(on, ['/other/x/y.ts', '/work/src/a.ts'])
   const ui = await $.ui.mount(MSG('see ../other/x/y.ts and ./src/a.ts'))
   const keys = await buttons(ui)
-  expect(keys.some((k) => k.startsWith('ofl|open|/other/x/y.ts||'))).toBe(true)
-  expect(keys.some((k) => k.startsWith('ofl|open|/work/src/a.ts||'))).toBe(true)
+  expect(keys.some((k) => k.startsWith('ck|open|/other/x/y.ts||'))).toBe(true)
+  expect(keys.some((k) => k.startsWith('ck|open|/work/src/a.ts||'))).toBe(true)
 })
 
 test('without markers set, only .git marks a root', async ($, on) => {
@@ -132,9 +132,9 @@ test('copy falls back to the next clipboard tool when one is missing', async ($,
   expect(runs.map((r) => r.argv)).toEqual([['pbcopy'], ['wl-copy']])
 })
 
-test('OPEN_FILE_COPY_CMD overrides the clipboard tool', async ($, on) => {
+test('CLICKKIT_COPY_CMD overrides the clipboard tool', async ($, on) => {
   const runs: any[] = []
-  stubs(on, ['/abs/a.py'], runs, { OPEN_FILE_COPY_CMD: 'my-clip --stdin' })
+  stubs(on, ['/abs/a.py'], runs, { CLICKKIT_COPY_CMD: 'my-clip --stdin' })
   const ui = await $.ui.mount(MSG('/abs/a.py'))
   await pressKey(ui, 'copy', '/abs/a.py')
   expect(runs).toEqual([{ argv: ['my-clip', '--stdin'], stdin: '/abs/a.py' }])
@@ -147,8 +147,8 @@ test('an inline command with a path gets one copy button for the whole command a
   stubs(on, ['/abs/wt'], runs)
   const ui = await $.ui.mount(MSG('Run this:\n`' + CMD + '`\nthen reload'))
   const keys = await buttons(ui)
-  expect(keys.filter((k) => k.startsWith('ofl|open|')).length).toBe(0)
-  const copies = keys.filter((k) => k.startsWith('ofl|cmd|'))
+  expect(keys.filter((k) => k.startsWith('ck|open|')).length).toBe(0)
+  const copies = keys.filter((k) => k.startsWith('ck|cmd|'))
   expect(copies.length).toBe(1)
   await ui.press({ key: copies[0] })
   expect(runs).toEqual([{ argv: ['pbcopy'], stdin: CMD }])
@@ -158,8 +158,8 @@ test('a backticked lone path still gets open and copy buttons', async ($, on) =>
   stubs(on, ['/abs/a.py'])
   const ui = await $.ui.mount(MSG('see `/abs/a.py` now'))
   const keys = await buttons(ui)
-  expect(keys.some((k) => k.startsWith('ofl|open|/abs/a.py|'))).toBe(true)
-  expect(keys.some((k) => k.startsWith('ofl|cmd|'))).toBe(false)
+  expect(keys.some((k) => k.startsWith('ck|open|/abs/a.py|'))).toBe(true)
+  expect(keys.some((k) => k.startsWith('ck|cmd|'))).toBe(false)
 })
 
 test('a fenced block gets one copy button for its whole body', async ($, on) => {
@@ -167,14 +167,14 @@ test('a fenced block gets one copy button for its whole body', async ($, on) => 
   stubs(on, ['/abs/wt'], runs)
   const ui = await $.ui.mount(MSG('go:\n```sh\ncd /abs/wt\nmake x | grep y\n```\ndone'))
   const keys = await buttons(ui)
-  expect(keys.filter((k) => k.startsWith('ofl|open|')).length).toBe(0)
-  const copies = keys.filter((k) => k.startsWith('ofl|cmd|'))
+  expect(keys.filter((k) => k.startsWith('ck|open|')).length).toBe(0)
+  const copies = keys.filter((k) => k.startsWith('ck|cmd|'))
   expect(copies.length).toBe(1)
   await ui.press({ key: copies[0] })
   expect(runs).toEqual([{ argv: ['pbcopy'], stdin: 'cd /abs/wt\nmake x | grep y' }])
 })
 
-const copyBtns = async (ui: any) => (await buttons(ui)).filter((k) => k.startsWith('ofl|cmd|'))
+const copyBtns = async (ui: any) => (await buttons(ui)).filter((k) => k.startsWith('ck|cmd|'))
 
 test('a fenced text block with no path in the message still gets a copy button', async ($, on) => {
   const runs: any[] = []
@@ -262,7 +262,7 @@ test('a stray tick right before a fence does not eat the fence or the path after
   expect(copies.length).toBe(1)
   await ui.press({ key: copies[0] })
   expect(runs[0].stdin).toBe('date `x`')
-  expect((await buttons(ui)).some((k) => k.startsWith('ofl|open|/abs/p.py|'))).toBe(true)
+  expect((await buttons(ui)).some((k) => k.startsWith('ck|open|/abs/p.py|'))).toBe(true)
 })
 
 test('a stray tick plus a normal span in one paragraph makes no multi-line span', async ($, on) => {
@@ -298,7 +298,7 @@ test('a bold label before a relative path still opens it', async ($, on) => {
   const runs: any[] = []
   stubs(on, ['/work/_project/sessions/0040.aeos-master-plan/MASTER-PLAN.md', '/work/.git'], runs)
   const ui = await $.ui.mount(MSG('Plan ready.\n**File to read:** _project/sessions/0040.aeos-master-plan/MASTER-PLAN.md — first screen is enough.'))
-  const key = (await buttons(ui)).find((k) => k.startsWith('ofl|open|'))
+  const key = (await buttons(ui)).find((k) => k.startsWith('ck|open|'))
   expect(key).toBeTruthy()
   await ui.press({ key })
   expect(runs).toEqual([{ argv: ['code', '/work', '-g', '/work/_project/sessions/0040.aeos-master-plan/MASTER-PLAN.md'], stdin: undefined }])
@@ -309,6 +309,6 @@ test('open toasts when the file is gone by the time of the press', async ($, on)
   stubs(on, ['/abs/a.py'])
   const ui = await $.ui.mount(MSG('see /abs/a.py'))
   gone.add('/abs/a.py')
-  await ui.press({ key: (await buttons(ui)).find((k) => k.startsWith('ofl|open|'))! })
+  await ui.press({ key: (await buttons(ui)).find((k) => k.startsWith('ck|open|'))! })
   expect(toasts.some((t) => t.includes('no longer exists'))).toBe(true)
 })

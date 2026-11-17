@@ -1,4 +1,4 @@
-# open-file-links
+# ClickKit
 
 Click a file path in Claude Code's terminal output and it opens in your editor at the right line. Copy any path, command or code block with one button instead of selecting it by hand.
 
@@ -7,10 +7,10 @@ Click a file path in Claude Code's terminal output and it opens in your editor a
 ## Install
 
 ```
-/plugin install open-file-links --marketplace Psykepro/open-file-links
+/plugin install clickkit --marketplace Psykepro/clickkit
 ```
 
-Or from a shell: `claude plugin marketplace add Psykepro/open-file-links`, then `claude plugin install open-file-links@open-file-links`. Needs a Claude Code version with terminal mod support.
+Or from a shell: `claude plugin marketplace add Psykepro/clickkit`, then `claude plugin install clickkit@clickkit`. Needs a Claude Code version with terminal mod support.
 
 ## Behavior
 
@@ -25,16 +25,20 @@ Or from a shell: `claude plugin marketplace add Psykepro/open-file-links`, then 
 
 | variable | default | meaning |
 |---|---|---|
-| `OPEN_FILE_EDITOR` | `code` | editor command; must accept `<root> -g <file>:<line>` (VS Code, Cursor, Windsurf, VSCodium) |
-| `OPEN_FILE_ROOT_MARKERS` | `.git` | comma list of file/folder names marking a project root, tried in order; no match opens the file's folder |
-| `OPEN_FILE_COPY_CMD` | unset | clipboard command (reads the path on stdin), replaces the built-in list, e.g. `xsel -ib` |
+| `CLICKKIT_EDITOR` | `code` | editor command; must accept `<root> -g <file>:<line>` (VS Code, Cursor, Windsurf, VSCodium) |
+| `CLICKKIT_ROOT_MARKERS` | `.git` | comma list of file/folder names marking a project root, tried in order; no match opens the file's folder |
+| `CLICKKIT_COPY_CMD` | unset | clipboard command (reads the path on stdin), replaces the built-in list, e.g. `xsel -ib` |
 
 ## What it runs and what it sends
 
 - **Reads:** the text of assistant messages (to find file paths and commands) and checks on disk whether each path exists. Nothing else is read.
-- **Runs, on a button press only:** your editor (`OPEN_FILE_EDITOR`, default `code`) as `<editor> <project root> -g <file>[:line]`, and a clipboard tool (`pbcopy`, `wl-copy`, `xclip -selection clipboard`, `clip.exe`, or the command you set in `OPEN_FILE_COPY_CMD`) with the path or command text on stdin. The editor and clipboard commands come only from those fixed names and your own environment variables; no other program is started.
+- **Runs, on a button press only:** your editor (`CLICKKIT_EDITOR`, default `code`) as `<editor> <project root> -g <file>[:line]`, and a clipboard tool (`pbcopy`, `wl-copy`, `xclip -selection clipboard`, `clip.exe`, or the command you set in `CLICKKIT_COPY_CMD`) with the path or command text on stdin. The editor and clipboard commands come only from those fixed names and your own environment variables; no other program is started.
 - **Sends:** nothing. The mod makes no network calls, has no telemetry and stores nothing. Data leaves the mod only as the text handed to your own clipboard tool or the path handed to your own editor.
 
 ## License
 
 MIT
+
+## Renamed from open-file-links
+
+This plugin was called `open-file-links` up to 0.4.2. The name changed in 0.5.0 because it now copies commands and text blocks as well as opening files. The settings changed with it: `OPEN_FILE_EDITOR`, `OPEN_FILE_ROOT_MARKERS` and `OPEN_FILE_COPY_CMD` are now `CLICKKIT_EDITOR`, `CLICKKIT_ROOT_MARKERS` and `CLICKKIT_COPY_CMD`.
