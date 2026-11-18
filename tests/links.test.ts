@@ -126,10 +126,10 @@ test('without markers set, only .git marks a root', async ($, on) => {
 
 test('copy falls back to the next clipboard tool when one is missing', async ($, on) => {
   const runs: any[] = []
-  stubs(on, ['/abs/a.py'], runs, {}, ['pbcopy'])
+  stubs(on, ['/abs/a.py'], runs, {}, ['pbcopy', '/usr/bin/pbcopy'])
   const ui = await $.ui.mount(MSG('/abs/a.py'))
   await pressKey(ui, 'copy', '/abs/a.py')
-  expect(runs.map((r) => r.argv)).toEqual([['pbcopy'], ['wl-copy']])
+  expect(runs.map((r) => r.argv)).toEqual([['pbcopy'], ['/usr/bin/pbcopy'], ['wl-copy']])
 })
 
 test('CLICKKIT_COPY_CMD overrides the clipboard tool', async ($, on) => {

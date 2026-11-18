@@ -62,23 +62,23 @@ async function openFile($, path, line) {
   }
 }
 
-// Clipboard tools tried in order: macOS, Wayland, X11, Windows/WSL
-const COPY_TOOLS = [['pbcopy'], ['wl-copy'], ['xclip', '-selection', 'clipboard'], ['clip.exe']]
+// Tried in order: macOS (by name, then full path for hosts with a stripped PATH), Wayland, X11, Windows/WSL
+const COPY_TOOLS = [['pbcopy'], ['/usr/bin/pbcopy'], ['wl-copy'], ['xclip', '-selection', 'clipboard'], ['clip.exe']]
 
 async function copyText($, text, label) {
   const custom = (await $.env.get('CLICKKIT_COPY_CMD')) || ''
   const tools = custom.trim() ? [custom.trim().split(/\s+/)] : COPY_TOOLS
-  let last = 'no clipboard tool found'
+  const failures = []
   for (const argv of tools) {
     try {
       const r = await $.process.run(argv, { stdin: text })
       if (r.exitCode === 0) return $.ui.toast('copied ' + label)
-      last = r.stderr || argv[0] + ' exit ' + r.exitCode
+      failures.push(argv[0] + ': ' + (r.stderr || 'exit ' + r.exitCode))
     } catch (err) {
-      last = argv[0] + ': ' + (err && err.message ? err.message : err)
+      failures.push(argv[0] + ': ' + (err && err.message ? err.message : err))
     }
   }
-  $.ui.toast('copy failed: ' + last)
+  $.ui.toast('copy failed: ' + (failures.join(' | ') || 'no clipboard tool found'))
 }
 
 // Button keys carry the action: ck|open|<abs>|<line>|<messageId>, ck|copy|<abs>||<messageId>, ck|cmd|<id>
