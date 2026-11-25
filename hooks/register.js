@@ -69,6 +69,16 @@ async function copyText($, text, label) {
   const custom = (await $.env.get('CLICKKIT_COPY_CMD')) || ''
   const tools = custom.trim() ? [custom.trim().split(/\s+/)] : COPY_TOOLS
   const failures = []
+  // Host clipboard first: a process.run copy is refused when the text names a Claude settings file
+  if (!custom.trim()) {
+    try {
+      const r = await $.ui.copy({ text })
+      if (r && r.isCopied) return $.ui.toast('copied ' + label)
+      failures.push('ui.copy: ' + ((r && r.reason) || 'not copied'))
+    } catch (err) {
+      failures.push('ui.copy: ' + (err && err.message ? err.message : err))
+    }
+  }
   for (const argv of tools) {
     try {
       const r = await $.process.run(argv, { stdin: text })

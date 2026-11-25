@@ -12,10 +12,13 @@ const MSG = (text: string) => ({
 const toasts: string[] = []
 const gone = new Set<string>()
 
+let hostCopy = false
+
 function stubs(on: any, existing: string[], runs: any[] = [], envs: Record<string, string> = {}, failing: string[] = []) {
   on('session.cwd', () => ({ value: '/work' }))
   on('env.get', ($: any, e: any) => ({ value: e.name === 'HOME' ? '/home/u' : envs[e.name] }))
   on('fs.exists', ($: any, e: any) => ({ value: existing.includes(e.path) && !gone.has(e.path) }))
+  on('ui.copy', () => ({ value: hostCopy ? { isCopied: true } : { isCopied: false, reason: 'no-clipboard' } }))
   on('ui.log', () => ({ value: undefined }))
   on('ui.toast', ($: any, e: any) => { toasts.push(String(e.message ?? e.text ?? JSON.stringify(e))); return { value: undefined } })
   on('ui.render', () => ({ type: 'Text', props: {}, children: ['native'] }))
@@ -130,6 +133,19 @@ test('copy falls back to the next clipboard tool when one is missing', async ($,
   const ui = await $.ui.mount(MSG('/abs/a.py'))
   await pressKey(ui, 'copy', '/abs/a.py')
   expect(runs.map((r) => r.argv)).toEqual([['pbcopy'], ['/usr/bin/pbcopy'], ['wl-copy']])
+})
+
+test('host clipboard copy wins and skips the process tools', async ($, on) => {
+  const runs: any[] = []
+  hostCopy = true
+  try {
+    stubs(on, ['/abs/a.py'], runs)
+    const ui = await $.ui.mount(MSG('/abs/a.py'))
+    await pressKey(ui, 'copy', '/abs/a.py')
+  } finally {
+    hostCopy = false
+  }
+  expect(runs).toEqual([])
 })
 
 test('CLICKKIT_COPY_CMD overrides the clipboard tool', async ($, on) => {
